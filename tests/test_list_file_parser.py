@@ -1,4 +1,3 @@
-from _pytest._py.path import LocalPath
 from rimpack.core.listfile import (
     AliasLine,
     BlankLine,

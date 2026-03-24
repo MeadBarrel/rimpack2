@@ -61,7 +61,7 @@ COMMENT_RE = re.compile(r"^(?P<leading_ws>[ \t]*)(?P<comment>\#.*)$")
 
 class Line:
     @classmethod
-    def from_raw_line(cls, line: str) -> Self: ...
+    def from_raw_line(cls, line: str) -> Self: ...  # pyright: ignore[reportUnusedParameter]
 
     def render_as_raw_line(self) -> str: ...
 
