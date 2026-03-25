@@ -1,8 +1,8 @@
-from rimpack.core.config import find_rimworld_root
+from rimpack.core.config import Config
 
 
 def main():
-    print(find_rimworld_root())
+    print(Config.get_default_config_path())
 
 
 if __name__ == "__main__":

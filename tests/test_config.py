@@ -1,9 +1,8 @@
 from pathlib import Path
-import platform
 
 import tomlkit
 
-from rimpack.core.config import RimworldConfig, Config
+from rimpack.core.config import Config
 from pytest import MonkeyPatch
 
 
@@ -36,34 +35,12 @@ def test_rimworld_path_property_from_env(monkeypatch: MonkeyPatch):
     assert config.rimworld_path == Path(path)
 
 
-def test_rimworld_path_property_from_env_no_config(monkeypatch: MonkeyPatch):
-    path = "c:/rimworld"
-    monkeypatch.setenv("RIMWORLD_PATH", path)
-    config = Config()
-    assert config.rimworld_path == Path(path)
-
-
 def test_workshop_path_property_from_env(monkeypatch: MonkeyPatch):
     path = "c:/rimworld"
     toml = tomlkit.TOMLDocument()
     monkeypatch.setenv("RIMWORLD_WORKSHOP_PATH", path)
     config = Config(toml)
     assert config.rimworld_workshop_path == Path(path)
-
-
-def test_workshop_path_property_from_env_no_config(monkeypatch: MonkeyPatch):
-    path = "c:/rimworld"
-    monkeypatch.setenv("RIMWORLD_WORKSHOP_PATH", path)
-    config = Config()
-    assert config.rimworld_workshop_path == Path(path)
-
-
-def test_get_default_config_path():
-    if platform.system() != "Windows":
-        raise RuntimeError("Currently only windows is supported")
-    expected = Path.resolve(Path("~/AppData/Local/rimpack/config.toml"))
-    result = Config.get_default_config_path()
-    assert result == expected
 
 
 def test_from_toml_str():
@@ -88,14 +65,38 @@ def test_from_toml(tmp_path: Path):
     assert result.rimworld_workshop_path == Path(r"c:/rimworld_workshop_path")
 
 
-def test_from_toml_default(tmp_path: Path, monkeypatch: MonkeyPatch):
-    source = """
-    rimworld_path="c:/rimworld_path"
-    rimworld_workshop_path="c:/rimworld_workshop_path"
-    """
-    path = tmp_path / "config.toml"
-    monkeypatch.setattr(Config, "get_default_config_path", staticmethod(lambda: path))
-    _ = path.write_text(source)
-    result = Config.from_toml()
-    assert result.rimworld_path == Path("c:/rimworld_path")
-    assert result.rimworld_workshop_path == Path("c:/rimworld_workshop_path")
+def test_with_rimworld_path_fromempty():
+    config = Config(tomlkit.TOMLDocument())
+    path = Path("c:/rimworld")
+    new_config = config.with_rimworld_path(path)
+    assert new_config.rimworld_path == path
+
+
+def test_with_rimworld_path():
+    before_path = Path("c:/rimworld")
+    config = Config(tomlkit.TOMLDocument()).with_rimworld_path(before_path)
+    path = Path("c:/rimworld_after")
+    new_config = config.with_rimworld_path(path)
+    assert new_config.rimworld_path == path
+
+
+def test_with_rimworld_workshop_path_fromempty():
+    config = Config(tomlkit.TOMLDocument())
+    path = Path("c:/workshop")
+    new_config = config.with_rimworld_workshop_path(path)
+    assert new_config.rimworld_workshop_path == path
+
+
+def test_with_rimworld_workshop_path():
+    before_path = Path("c:/workshop")
+    config = Config(tomlkit.TOMLDocument()).with_rimworld_workshop_path(before_path)
+    path = Path("c:/workshop_after")
+    new_config = config.with_rimworld_workshop_path(path)
+    assert new_config.rimworld_workshop_path == path
+
+
+def test_save(rimworld_root: Path, fake_config_path: Path):
+    config = Config(tomlkit.TOMLDocument()).with_rimworld_path(rimworld_root)
+    config.save(fake_config_path)
+    new_config = Config.from_toml(fake_config_path)
+    assert new_config.rimworld_path == rimworld_root
