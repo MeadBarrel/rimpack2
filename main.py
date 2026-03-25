@@ -1,5 +1,8 @@
+from rimpack.core.config import find_rimworld_root
+
+
 def main():
-    print("Hello from rimpack2!")
+    print(find_rimworld_root())
 
 
 if __name__ == "__main__":

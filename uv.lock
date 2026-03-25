@@ -272,6 +272,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "pydantic" },
     { name = "rich" },
+    { name = "steamworkspy" },
     { name = "tomlkit" },
     { name = "typer" },
 ]
@@ -288,6 +289,7 @@ dev = [
 requires-dist = [
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "rich", specifier = ">=14.3.3" },
+    { name = "steamworkspy", specifier = ">=0.0.2" },
     { name = "tomlkit", specifier = ">=0.14.0" },
     { name = "typer", specifier = ">=0.24.1" },
 ]
@@ -332,6 +334,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/58/15/8b3609fd3830ef7b27b655beb4b4e9c62313a4e8da8c676e142cc210d58e/shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de", size = 10310, upload-time = "2023-10-24T04:13:40.426Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686", size = 9755, upload-time = "2023-10-24T04:13:38.866Z" },
+]
+
+[[package]]
+name = "steamworkspy"
+version = "0.0.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/4d/61/9ab0138928702b65dc89641134105e8f960ca04ba970b3925425c38e1fda/steamworkspy-0.0.2.tar.gz", hash = "sha256:00f9363639d56ef35dc656657831654073c89dc2e68754a7c65e36ee4c0e0053", size = 259864, upload-time = "2024-11-30T17:03:29.981Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/86/33/e9d68779e38a65d8a07d5b5da49c1c2af77ca938f4eaa0a276786c463a13/steamworkspy-0.0.2-py3-none-any.whl", hash = "sha256:bd805480a88ca884796228f0a214d0b8c3832712250fa3012f791d5af2288937", size = 267229, upload-time = "2024-11-30T17:03:12.81Z" },
 ]
 
 [[package]]
