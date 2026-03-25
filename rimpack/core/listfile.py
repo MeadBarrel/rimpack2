@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from math import inf
+from pathlib import Path
 from typing import Literal, Self, override
 import re
 from functools import cached_property
@@ -89,6 +90,10 @@ class ListFile:
     lines: tuple[Line, ...]
 
     @classmethod
+    def from_path(cls, path: Path) -> Self:
+        return cls.from_string(path.read_text())
+
+    @classmethod
     def from_string(cls, source: str) -> Self:
         lines = source.splitlines()
         lines = tuple(parse_line(line) for line in lines)
@@ -101,6 +106,9 @@ class ListFile:
         if any(i > first_reference_line_index for i in aliases):
             raise NonTopAliasDefinitionError()
         return cls(lines=lines)
+
+    def save(self, path: Path):
+        _ = path.write_text(self.render())
 
     @cached_property
     def alias(self) -> str | None:
@@ -136,11 +144,11 @@ def reference_line_to_reference(line: "ReferenceLine") -> Reference:
 
 @dataclass(frozen=True)
 class AliasLine(Line):
-    leading_ws: str
-    after_alias_keyword_ws: str
     alias: str
-    before_comment_ws: str
-    trailing_comment: str | None
+    leading_ws: str = ""
+    after_alias_keyword_ws: str = ""
+    before_comment_ws: str = ""
+    trailing_comment: str | None = None
 
     @classmethod
     @override
@@ -164,17 +172,20 @@ class AliasLine(Line):
 
     @override
     def render_as_raw_line(self) -> str:
-        return f"{self.leading_ws}@alias{self.after_alias_keyword_ws}{self.alias}{self.before_comment_ws}{self.trailing_comment or ''}"
+        before_comment_ws = self.before_comment_ws or (
+            " " if self.trailing_comment else ""
+        )
+        return f"{self.leading_ws}@alias{self.after_alias_keyword_ws or ' '}{self.alias}{before_comment_ws}{self.trailing_comment or ''}"
 
 
 @dataclass(frozen=True)
 class ReferenceLine(Line):
-    leading_ws: str
-    disabled: str | None
-    after_bang_ws: str
     reference: str
-    before_comment_ws: str
-    trailing_comment: str | None
+    leading_ws: str = ""
+    disabled: str | None = None
+    after_bang_ws: str = ""
+    before_comment_ws: str = ""
+    trailing_comment: str | None = None
 
     @classmethod
     @override
@@ -199,7 +210,7 @@ class ReferenceLine(Line):
 
 @dataclass(frozen=True)
 class BlankLine(Line):
-    text: str
+    text: str = ""
 
     @classmethod
     @override
@@ -215,8 +226,8 @@ class BlankLine(Line):
 
 @dataclass(frozen=True)
 class CommentLine(Line):
-    leading_ws: str
     comment: str
+    leading_ws: str = ""
 
     @classmethod
     @override

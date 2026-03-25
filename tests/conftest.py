@@ -1,13 +1,12 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+
 import pytest
 from pytest import MonkeyPatch
-from tomlkit import TOMLDocument
-import tomlkit
 
-from rimpack.core.config import Config
 from rimpack.cli.main import console
+from rimpack.core.config import Config
 
 
 @pytest.fixture()
@@ -68,7 +67,94 @@ def fake_console_status(monkeypatch: MonkeyPatch):
 @pytest.fixture
 def rimpack_config(rimworld_root: Path, workshop_root: Path) -> Config:
     source = f"""
-    rimworld_path={rimworld_root.as_posix()},
-    rimworld_workshop_path={workshop_root.as_posix()}
+    rimworld_path="{rimworld_root.as_posix()}"
+    rimworld_workshop_path="{workshop_root.as_posix()}"
     """
     return Config.from_toml_str(source)
+
+
+@pytest.fixture
+def populated_config(rimpack_config: Config, config_path: Path):
+    rimpack_config.save(config_path)
+
+
+@pytest.fixture
+def rimworld_root_data(rimworld_root: Path) -> Path:
+    result = rimworld_root / "Data"
+    result.mkdir(parents=True, exist_ok=True)
+    return result
+
+
+@pytest.fixture
+def rimworld_core_mod(rimworld_root_data: Path):
+    about_path = rimworld_root_data / "Core" / "About" / "About.xml"
+    about_path.parent.mkdir(parents=True, exist_ok=True)
+    about_xml = """\
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <packageId>Ludeon.RimWorld</packageId>
+  <author>Ludeon Studios</author>
+  <forceLoadBefore>
+    <li>Ludeon.RimWorld.Ideology</li>
+    <li>Ludeon.RimWorld.Royalty</li>
+  </forceLoadBefore>
+</ModMetaData>
+    """
+    pass
+    _ = about_path.write_text(about_xml)
+
+
+@pytest.fixture
+def rimworld_royalty_mod(rimworld_root_data: Path):
+    about_path = rimworld_root_data / "Royalty" / "About" / "About.xml"
+    about_path.parent.mkdir(parents=True, exist_ok=True)
+    about_xml = """\
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <packageId>Ludeon.RimWorld.Royalty</packageId>
+  <author>Ludeon Studios</author>
+  <steamAppId>1149640</steamAppId>
+  <supportedVersions>
+  	<li>1.6</li>
+  </supportedVersions>
+  <forceLoadAfter>
+    <li>Ludeon.RimWorld</li>
+  </forceLoadAfter>
+  <forceLoadBefore>
+    <li>Ludeon.RimWorld.Ideology</li>
+    <li>Ludeon.RimWorld.Biotech</li>
+    <li>Ludeon.RimWorld.Anomaly</li>
+    <li>Ludeon.RimWorld.Odyssey</li>
+  </forceLoadBefore>
+</ModMetaData>
+    """
+    pass
+    _ = about_path.write_text(about_xml)
+
+
+@pytest.fixture
+def rimworld_ideology_mod(rimworld_root_data: Path):
+    about_path = rimworld_root_data / "Ideology" / "About" / "About.xml"
+    about_path.parent.mkdir(parents=True, exist_ok=True)
+    about_xml = """\
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>\
+  <packageId>Ludeon.RimWorld.Ideology</packageId>
+  <author>Ludeon Studios</author>
+  <steamAppId>1392840</steamAppId>
+  <supportedVersions>
+  	<li>1.6</li>
+  </supportedVersions>
+  <forceLoadAfter>
+    <li>Ludeon.RimWorld</li>
+    <li>Ludeon.RimWorld.Royalty</li>
+  </forceLoadAfter>
+  <forceLoadBefore>
+    <li>Ludeon.RimWorld.Biotech</li>
+    <li>Ludeon.RimWorld.Anomaly</li>
+    <li>Ludeon.RimWorld.Odyssey</li>
+  </forceLoadBefore>
+</ModMetaData>
+    """
+    pass
+    _ = about_path.write_text(about_xml)

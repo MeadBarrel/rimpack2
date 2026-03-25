@@ -289,3 +289,8 @@ def test_list_file_render():
     """
     result = ListFile.from_string(source).render()
     assert result == source
+
+
+def test_alias_default_render():
+    result = AliasLine("myalias", trailing_comment=("#comment")).render_as_raw_line()
+    assert result == "@alias myalias #comment"
