@@ -143,6 +143,10 @@ def find_steam_libraries(steam_root: Path) -> list[Path]:
 
 
 def find_rimworld_root() -> Path | None:
+    return _find_rimworld_root()
+
+
+def _find_rimworld_root() -> Path | None:
     steam_root = find_steam_root()
     if steam_root is None:
         return None
@@ -156,6 +160,10 @@ def find_rimworld_root() -> Path | None:
 
 
 def find_rimworld_workshop_path() -> Path | None:
+    return _find_rimworld_workshop_path()
+
+
+def _find_rimworld_workshop_path() -> Path | None:
     steam_root = find_steam_root()
     if steam_root is None:
         return None
