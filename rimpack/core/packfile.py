@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Self
 from pydantic import BaseModel
-from tomlkit import TOMLDocument, dumps, table
+from tomlkit import TOMLDocument, dumps, table  # pyright: ignore[reportUnknownVariableType]
 import tomlkit
 from tomlkit.items import Array, Table
 

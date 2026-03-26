@@ -142,15 +142,11 @@ def find_steam_libraries(steam_root: Path) -> list[Path]:
     return libraries
 
 
-def find_rimworld_root() -> Path | None:
-    return _find_rimworld_root()
+def find_rimworld_root(steam_root: Path) -> Path | None:
+    return _find_rimworld_root(steam_root)
 
 
-def _find_rimworld_root() -> Path | None:
-    steam_root = find_steam_root()
-    if steam_root is None:
-        return None
-
+def _find_rimworld_root(steam_root: Path) -> Path | None:
     for library in find_steam_libraries(steam_root):
         candidate = library / "steamapps" / "common" / "RimWorld"
         if candidate.exists():
@@ -159,15 +155,11 @@ def _find_rimworld_root() -> Path | None:
     return None
 
 
-def find_rimworld_workshop_path() -> Path | None:
-    return _find_rimworld_workshop_path()
+def find_rimworld_workshop_path(steam_root: Path) -> Path | None:
+    return _find_rimworld_workshop_path(steam_root)
 
 
-def _find_rimworld_workshop_path() -> Path | None:
-    steam_root = find_steam_root()
-    if steam_root is None:
-        return None
-
+def _find_rimworld_workshop_path(steam_root: Path) -> Path | None:
     for library in find_steam_libraries(steam_root):
         candidate = (
             library / "steamapps" / "workshop" / "content" / RIMWORLD_STEAM_APP_ID

@@ -12,7 +12,7 @@ runner = CliRunner()
 
 
 def test_create_config_cli(config_path: Path, rimworld_root: Path, workshop_root: Path):
-    result = runner.invoke(app, "create-config", input="y\ny\ny\ny\n")
+    result = runner.invoke(app, "create-config", input="y\n")
     assert result.exit_code == 0
     assert config_path.exists()
     config = Config.from_toml(config_path)
