@@ -18,8 +18,9 @@ from rimpack.core.listfile import (
     ListFile,
     ReferenceLine,
 )
-from rimpack.core.mod.about import parse_about_xml
+from rimpack.core.mod.about import AboutModMetadata, parse_about_xml
 from rimpack.core.packfile import PackConfig
+from rimpack.core.toposort import mod_to_sort_item, sort_package_ids
 
 app = typer.Typer()
 
@@ -34,7 +35,9 @@ def cli_create_config():
 @app.command("init")
 def cli_init():
     config = _attempt_create_config()
-    dlcs = list(_detect_dlcs(config))
+    dlcs_about = list(_detect_dlcs(config))
+    dlcs_sort_items = [mod_to_sort_item(item, "1.6") for item in dlcs_about]
+    dlcs = sort_package_ids(dlcs_sort_items)
     path = Path.cwd()
     Path("lists").mkdir()
 
@@ -91,7 +94,7 @@ def cli_init():
     pack_file.save(Path("pack.toml"))
 
 
-def _detect_dlcs(config: Config) -> Iterator[str]:
+def _detect_dlcs(config: Config) -> Iterator[AboutModMetadata]:
     rimworld_path = config.rimworld_path
     if rimworld_path is None:
         raise ValueError("Rimworld path is not set")
@@ -103,8 +106,7 @@ def _detect_dlcs(config: Config) -> Iterator[str]:
         if not about_xml_path.exists():
             continue
         about = parse_about_xml(about_xml_path.read_text(encoding="utf-8"))
-        package_id = about.package_id
-        yield package_id
+        yield about
 
 
 def _attempt_create_config() -> Config:

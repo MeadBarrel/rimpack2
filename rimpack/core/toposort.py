@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from collections import defaultdict
-from collections.abc import Collection, Hashable
+from collections import defaultdict, deque
+from collections.abc import Collection, Hashable, Iterable
 from dataclasses import dataclass, field
 from heapq import heappop, heappush
+
+from rimpack.core.mod.about import AboutModMetadata
+from rimpack.tools import normalize_rimworld_version
 
 
 class CycleError(ValueError):
@@ -17,14 +20,86 @@ class ToposortItem[T: Hashable]:
     after: Collection[T] = field(default_factory=tuple)
 
 
+def mod_to_sort_item(
+    about: AboutModMetadata, rimworld_version: str
+) -> ToposortItem[str]:
+    version = normalize_rimworld_version(rimworld_version)
+    package_id = about.package_id
+    before: set[str] = set()
+    after: set[str] = set()
+    for item in about.mod_dependencies:
+        after.add(item.package_id)
+    for item in about.mod_dependencies_by_version:
+        if normalize_rimworld_version(item.version) != version:
+            continue
+        for sub_item in item.dependencies:
+            after.add(sub_item.package_id)
+    before |= set(about.load_before)
+    for item in about.load_before_by_version:
+        if normalize_rimworld_version(item.version) != version:
+            continue
+        before |= set(item.package_ids)
+    before |= set(about.force_load_before)
+    after |= set(about.load_after)
+    for item in about.load_after_by_version:
+        if normalize_rimworld_version(item.version) != version:
+            continue
+        after |= set(item.package_ids)
+    after |= set(about.force_load_after)
+    return ToposortItem(
+        package_id,
+        before=before,
+        after=after,
+    )
+
+
+def sort_package_ids(items: Collection[ToposortItem[str]]) -> list[str]:
+    package_ids = [item.item for item in items]
+    lowercase_items = [
+        ToposortItem(
+            item.item.lower(),
+            before=[x.lower() for x in item.before],
+            after=[x.lower() for x in item.after],
+        )
+        for item in items
+    ]
+    ordered = stable_toposort(lowercase_items)
+    return restore_original_order(package_ids, ordered)
+
+
+def restore_original_order(
+    original: Iterable[str],
+    shuffled_lower: Iterable[str],
+) -> list[str]:
+    """
+    Reorder `original` to match the order of `shuffled_lower`,
+    where matching is done via `.lower()`.
+
+    Handles duplicates correctly.
+    """
+    buckets: dict[str, deque[str]] = defaultdict(deque)
+
+    for s in original:
+        buckets[s.lower()].append(s)
+
+    result: list[str] = []
+
+    for key in shuffled_lower:
+        try:
+            result.append(buckets[key].popleft())
+        except (KeyError, IndexError):
+            raise ValueError(f"No available original string for {key!r}")
+
+    return result
+
+
 def stable_toposort[T: Hashable](
     items: Collection[ToposortItem[T]],
 ) -> list[T]:
     """
     Topologically sort items while preserving original order as much as possible.
 
-    Priority is based not only on an item's own original position, but also on
-    the earliest original position of any item it directly helps unblock.
+    Missing references in `before` and `after` are ignored.
 
     Semantics:
     - if X.before contains Y, then X must come before Y
@@ -44,17 +119,17 @@ def stable_toposort[T: Hashable](
         node = entry.item
 
         for dep in entry.after:
-            if dep not in index:
-                raise KeyError(f"{node!r} has unknown 'after' dependency {dep!r}")
             if dep == node:
                 raise CycleError(f"Self-cycle detected at {node!r}")
+            if dep not in index:
+                continue
             deps_by_node[node].add(dep)
 
         for dependent in entry.before:
-            if dependent not in index:
-                raise KeyError(f"{node!r} has unknown 'before' target {dependent!r}")
             if dependent == node:
                 raise CycleError(f"Self-cycle detected at {node!r}")
+            if dependent not in index:
+                continue
             deps_by_node[dependent].add(node)
 
     indegree: dict[T, int] = {}
@@ -63,8 +138,8 @@ def stable_toposort[T: Hashable](
         for dep in deps:
             dependents_by_node[dep].append(node)
 
-    # A node's priority is the earliest original position it directly influences,
-    # or its own position if that is earlier.
+    # Priority is based on the earliest original position of this node
+    # or of any node it directly helps unblock.
     priority: dict[T, int] = {}
     for node in nodes:
         p = index[node]

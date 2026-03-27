@@ -50,8 +50,8 @@ def test_init(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     ludeon_list_path = Path("lists/00_ludeon.list")
     ludeon_list = ListFile.from_path(ludeon_list_path)
     ludeon_list_references = ludeon_list.references
-    assert set(ludeon_list_references) == {
+    assert ludeon_list_references == (
         PackageIdReference("Ludeon.RimWorld"),
         PackageIdReference("Ludeon.RimWorld.Royalty"),
         PackageIdReference("Ludeon.RimWorld.Ideology"),
-    }
+    )
