@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [tool.uv]
-package=true
+package = true
 
 [dependency-groups]
 dev = ["basedpyright>=1.38.3", "prek>=0.3.8", "pytest>=9.0.2", "ruff>=0.15.7"]
@@ -25,3 +25,25 @@ pythonpath = ["."]
 
 [project.scripts]
 rimpack = "rimpack.cli.main:main"
+
+[[tool.pyright.executionEnvironments]]
+root = "buildstock_fetch"
+extraPaths = ["."]
+
+[[tool.pyright.executionEnvironments]]
+root = "tests"
+extraPaths = ["."]
+reportAny = "none"
+reportUnusedCallResult = "none"
+reportUnusedCoroutine = "none"
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownMemberType = "none"
+reportUnknownParameterType = "none"
+reportUnknownVariableType = "none"
+reportMissingParameterType = "none"
+reportMissingTypeArgument = "none"
+reportMissingTypeStubs = "none"
+reportUnusedParameter = "none"
+reportUntypedFunctionDecorator = "none"
+reportArgumentType = "none"

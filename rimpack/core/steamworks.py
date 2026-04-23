@@ -7,11 +7,13 @@ import logging
 import os
 from pathlib import Path
 import sys
+import time
 from types import ModuleType
-from typing import Protocol, cast
+from typing import Protocol, cast, final
 from urllib.parse import parse_qs, urlparse
 
 from rimpack.constants import RIMWORLD_STEAM_APP_ID
+from rimpack.core.mod.modfolder import ModFolder, load_mod_folder
 
 type SteamworksOperation = Callable[[int], object]
 type SteamworksFactory = Callable[[], object]
@@ -42,6 +44,41 @@ class SteamworksResolutionError(SteamworksError):
     """Raised when a workshop item cannot be resolved into a local mod folder."""
 
 
+@final
+class Steamworks:
+    def __init__(self) -> None:
+        self._client = _create_steamworks_client()
+
+    def subscribe(self, workshop_id: str | int):
+        logging.getLogger(__name__).debug("Subscribing to %s", workshop_id)
+        return _subscribe_to_workshop_item(workshop_id, self._client)
+
+    def unsubscribe(self, workshop_id: str | int):
+        logging.getLogger(__name__).debug("Unsubscribing from %s", workshop_id)
+        return _unsubscribe_from_workshop_item(workshop_id, self._client)
+
+
+def resolve_rimworld_workshop_mod_by_id(
+    steamworks: Steamworks,
+    workshop_root: Path,
+    workshop_id: str | int,
+    unsubscribe: bool = False,
+) -> ModFolder:
+    workshop_id = coerce_workshop_item_id(workshop_id)
+    mod_path = workshop_root / str(workshop_id)
+    pre_existing = _try_load_workshop_mod(mod_path)
+    if pre_existing:
+        return pre_existing
+    _ = steamworks.subscribe(workshop_id)
+    logging.getLogger(__name__).info("Waiting for a mod in %s", mod_path)
+    result = _wait_for_workshop_mod(mod_path)
+    if result is None:
+        raise SteamworksError(f"Deadline expired while waiting for data in {mod_path}")
+    if unsubscribe and not pre_existing:
+        steamworks.unsubscribe(workshop_id)
+    return result
+
+
 def is_steamworks_available() -> bool:
     """Return whether the Steamworks Python module can be imported."""
     try:
@@ -51,7 +88,7 @@ def is_steamworks_available() -> bool:
     return True
 
 
-def create_steamworks_client() -> object:
+def _create_steamworks_client() -> object:
     """Create and initialize a Steamworks client."""
     logger.info("Initializing Steamworks client")
     with ExitStack() as exit_stack:
@@ -77,16 +114,16 @@ def create_steamworks_client() -> object:
         return client
 
 
-def subscribe_to_workshop_item(
+def _subscribe_to_workshop_item(
     workshop_id: int | str, steamworks_client: object | None = None
-) -> bool:
+) -> None:
     """Request a Steam Workshop subscription for the given published file ID."""
     published_file_id = _coerce_workshop_item_id(workshop_id)
     logger.info("Subscribing to workshop item %s", published_file_id)
     client = (
         steamworks_client
         if steamworks_client is not None
-        else create_steamworks_client()
+        else _create_steamworks_client()
     )
     operation = _get_workshop_operation(
         client,
@@ -100,20 +137,19 @@ def subscribe_to_workshop_item(
             f"Steamworks refused to subscribe to workshop item {published_file_id}"
         )
     logger.info("Subscribed to workshop item %s", published_file_id)
-    return True
 
 
-def unsubscribe_from_workshop_item(
+def _unsubscribe_from_workshop_item(
     workshop_id: int | str,
     steamworks_client: object | None = None,
-) -> bool:
+) -> None:
     """Request a Steam Workshop unsubscription for the given published file ID."""
     published_file_id = _coerce_workshop_item_id(workshop_id)
     logger.info("Unsubscribing from workshop item %s", published_file_id)
     client = (
         steamworks_client
         if steamworks_client is not None
-        else create_steamworks_client()
+        else _create_steamworks_client()
     )
     operation = _get_workshop_operation(
         client,
@@ -127,7 +163,6 @@ def unsubscribe_from_workshop_item(
             f"Steamworks refused to unsubscribe from workshop item {published_file_id}"
         )
     logger.info("Unsubscribed from workshop item %s", published_file_id)
-    return True
 
 
 def _load_steamworks_module() -> ModuleType:
@@ -322,4 +357,25 @@ def _get_optional_attribute(value: object, attribute_name: str) -> object | None
     try:
         return cast(object, getattr(value, attribute_name))
     except AttributeError:
+        return None
+
+
+def _wait_for_workshop_mod(
+    mod_path: Path,
+) -> ModFolder | None:
+    logger.debug("Waiting for workshop mod at %s", mod_path)
+    deadline = time.monotonic() + WORKSHOP_RESOLVE_TIMEOUT_SECONDS
+    while True:
+        mod = _try_load_workshop_mod(mod_path)
+        if mod is not None:
+            return mod
+        if time.monotonic() >= deadline:
+            return None
+        time.sleep(WORKSHOP_RESOLVE_POLL_INTERVAL_SECONDS)
+
+
+def _try_load_workshop_mod(mod_path: Path) -> ModFolder | None:
+    try:
+        return load_mod_folder(mod_path)
+    except Exception:
         return None

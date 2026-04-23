@@ -1,5 +1,8 @@
 from collections.abc import Iterator
 from pathlib import Path
+
+import pytest
+from rich.table import Table
 import typer
 from rich.console import Console
 from rich.prompt import Confirm
@@ -20,6 +23,7 @@ from rimpack.core.listfile import (
 )
 from rimpack.core.mod.about import AboutModMetadata, parse_about_xml
 from rimpack.core.packfile import PackConfig
+from rimpack.core.steamworks import Steamworks, resolve_rimworld_workshop_mod_by_id
 from rimpack.core.toposort import mod_to_sort_item, sort_package_ids
 
 app = typer.Typer()
@@ -92,6 +96,34 @@ def cli_init():
 
     pack_file = PackConfig.initialize(path.name, "1.6", list_files_str)
     pack_file.save(Path("pack.toml"))
+
+
+@app.command("resolve")
+def cli_resolve(
+    workshop_id: int,
+    config_path: Path | None = None,
+    unsubscribe: bool = False,
+):
+    config_path = config_path or Config.get_default_config_path()
+
+    config = Config.from_toml(config_path)
+    steamworks = Steamworks()
+    workshop_root = config.rimworld_workshop_path
+    if workshop_root is None:
+        print("Workshop root not set")
+        raise typer.Exit(1)
+    mod = resolve_rimworld_workshop_mod_by_id(
+        steamworks, workshop_root, workshop_id, unsubscribe=unsubscribe
+    )
+    table = Table(title="Mod Metadata")
+    table.add_column("Field")
+    table.add_column("Value")
+    table.add_row("Path", str(mod.path))
+    table.add_row("Name", mod.about.name)
+    table.add_row("Package ID", mod.about.package_id)
+    table.add_row("Description", mod.about.description)
+    table.add_row("Supported Versions", str(mod.about.supported_versions))
+    console.print(table)
 
 
 def _detect_dlcs(config: Config) -> Iterator[AboutModMetadata]:
