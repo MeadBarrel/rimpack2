@@ -38,7 +38,7 @@ def workshop_root(tmp_path: Path) -> Path:
 def fake_rimworld_path(rimworld_root: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "rimpack.core.config._find_rimworld_root",
-        lambda _: rimworld_root,  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
+        lambda _: rimworld_root,
     )
 
 
@@ -46,7 +46,7 @@ def fake_rimworld_path(rimworld_root: Path, monkeypatch: pytest.MonkeyPatch):
 def fake_steam_workshop_root(workshop_root: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "rimpack.core.config._find_rimworld_workshop_path",
-        lambda _: workshop_root,  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
+        lambda _: workshop_root,
     )
 
 

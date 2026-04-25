@@ -1,260 +1,221 @@
-from dataclasses import dataclass
-from math import inf
+from copy import deepcopy
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, Self, override
-import re
-from functools import cached_property
+from typing import Any, Literal, Self, TypeAlias, cast, final, overload
+
+from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
+import typedload
+
+from rimpack.core.types import ModReference, references_match
 
 
-class ListFileParsingError(ValueError): ...
+@dataclass(frozen=True, kw_only=True)
+class ModListReferenceFields:
+    name: str | None = None
 
 
-class MultipleAliasDefinitionsError(ListFileParsingError):
-    def __init__(self) -> None:
-        super().__init__()
+@dataclass(frozen=True, kw_only=True)
+class ModListReferencePid(ModListReferenceFields):
+    pid: str
 
-    @override
-    def __str__(self) -> str:
-        return "Multiple alias definitions are not allowed in list file"
+    @property
+    def kind(self) -> Literal["pid"]:
+        return "pid"
 
-
-class NonTopAliasDefinitionError(ListFileParsingError):
-    def __init__(self) -> None:
-        super().__init__()
-
-    @override
-    def __str__(self) -> str:
-        return "Alias definition must be on top"
+    @property
+    def reference(self) -> str:
+        return self.pid
 
 
-LineKind = Literal["blank", "alias", "comment", "entry", "unknown"]
+@dataclass(frozen=True, kw_only=True)
+class ModListReferenceWid(ModListReferenceFields):
+    wid: int
 
-ALIAS_RE = re.compile(
-    r"""
-    ^
-    (?P<leading_ws>[ \t]*)
-    @alias
-    (?P<after_alias_keyword_ws>[ \t]+)
-    (?P<alias>\w+)
-    (?P<before_comment_ws>[ \t]*)
-    (?P<trailing_comment>\#.*)?
-    $
-    """,
-    re.VERBOSE,
+    @property
+    def kind(self) -> Literal["wid"]:
+        return "wid"
+
+    @property
+    def reference(self) -> str:
+        return str(self.wid)
+
+
+@dataclass(frozen=True, kw_only=True)
+class ModListReferenceLoc(ModListReferenceFields):
+    loc: str
+
+    @property
+    def kind(self) -> Literal["loc"]:
+        return "loc"
+
+    @property
+    def reference(self) -> str:
+        return self.loc
+
+
+ModListReference: TypeAlias = (
+    ModListReferencePid | ModListReferenceWid | ModListReferenceLoc
 )
 
-REFERENCE_RE = re.compile(
-    r"""
-    ^
-    (?P<leading_ws>[ \t]*)
-    (?P<disabled>!)?
-    (?P<after_bang_ws>[ \t]*)
-    (?P<reference>steam:\d+|packageid:[^\s#]+|local:[^\s#]+)
-    (?P<before_comment_ws>[ \t]*)
-    (?P<trailing_comment>\#.*)?
-    $
-    """,
-    re.VERBOSE,
-)
 
-COMMENT_RE = re.compile(r"^(?P<leading_ws>[ \t]*)(?P<comment>\#.*)$")
+@dataclass(frozen=True, kw_only=True)
+class ModListRecordFields:
+    before: list[ModListReference] = field(default_factory=list)
+    after: list[ModListReference] = field(default_factory=list)
 
 
-class Line:
-    @classmethod
-    def from_raw_line(cls, line: str) -> Self: ...  # pyright: ignore[reportUnusedParameter]
-
-    def render_as_raw_line(self) -> str: ...
+@dataclass(frozen=True, kw_only=True)
+class ModListRecordPid(ModListReferencePid, ModListRecordFields): ...
 
 
-@dataclass(frozen=True)
-class SteamReference:
-    id: str
+@dataclass(frozen=True, kw_only=True)
+class ModListRecordWid(ModListReferenceWid, ModListRecordFields): ...
 
 
-@dataclass(frozen=True)
-class PackageIdReference:
-    package_id: str
+@dataclass(frozen=True, kw_only=True)
+class ModListRecordLoc(ModListReferenceLoc, ModListRecordFields): ...
 
 
-@dataclass(frozen=True)
-class LocalReference:
-    package_id: str
+ModListRecord: TypeAlias = ModListRecordPid | ModListRecordWid | ModListRecordLoc
+ModListRecords: TypeAlias = tuple[ModListRecord, ...]
+ModListPacks: TypeAlias = dict[str, ModListRecords]
 
 
-type Reference = SteamReference | PackageIdReference | LocalReference
-
-
-@dataclass(frozen=True)
-class ListFile:
-    lines: tuple[Line, ...]
-
-    @classmethod
-    def from_path(cls, path: Path) -> Self:
-        return cls.from_string(path.read_text())
-
-    @classmethod
-    def from_string(cls, source: str) -> Self:
-        lines = source.splitlines()
-        lines = tuple(parse_line(line) for line in lines)
-        aliases = [i for i, line in enumerate(lines) if isinstance(line, AliasLine)]
-        first_reference_line_index = next(
-            (i for i, line in enumerate(lines) if isinstance(line, ReferenceLine)), inf
-        )
-        if len(aliases) > 1:
-            raise MultipleAliasDefinitionsError()
-        if any(i > first_reference_line_index for i in aliases):
-            raise NonTopAliasDefinitionError()
-        return cls(lines=lines)
-
-    def save(self, path: Path):
-        _ = path.write_text(self.render())
-
-    @cached_property
-    def alias(self) -> str | None:
-        alias = next((line for line in self.lines if isinstance(line, AliasLine)), None)
-        if alias is None:
-            return None
-        return alias.alias
-
-    @cached_property
-    def references(self) -> tuple[Reference, ...]:
-        return tuple(
-            reference_line_to_reference(line)
-            for line in self.lines
-            if isinstance(line, ReferenceLine)
+@final
+class ModList:
+    def __init__(
+        self,
+        source: Any,  # pyright: ignore[reportAny, reportExplicitAny]
+    ) -> None:
+        self.data: ModListPacks = typedload.load(source, ModListPacks)
+        self._source = (
+            source
+            if isinstance(source, CommentedMap)
+            else _packs_to_source(self.data)
         )
 
-    def render(self) -> str:
-        return "\n".join(line.render_as_raw_line() for line in self.lines)
-
-
-def reference_line_to_reference(line: "ReferenceLine") -> Reference:
-    reference_type, reference_value = line.reference.split(":", 1)
-    match reference_type:
-        case "steam":
-            return SteamReference(reference_value)
-        case "local":
-            return LocalReference(reference_value)
-        case "packageid":
-            return PackageIdReference(reference_value)
-        case _:
-            raise ListFileParsingError(f"Unknown reference type: {reference_type}")
-
-
-@dataclass(frozen=True)
-class AliasLine(Line):
-    alias: str
-    leading_ws: str = ""
-    after_alias_keyword_ws: str = ""
-    before_comment_ws: str = ""
-    trailing_comment: str | None = None
+    def dump(self, file: Path):
+        yaml = _create_yaml()
+        with file.open("w", encoding="utf-8") as output_file:
+            yaml.dump(self._source, output_file)  # pyright: ignore[reportUnknownMemberType]
 
     @classmethod
-    @override
-    def from_raw_line(cls, line: str) -> Self:
-        match = ALIAS_RE.match(line)
-        if match is None:
-            raise ListFileParsingError(f"Incorrect input line for alias: {line}")
-        groups = match.groupdict()
-        leading_ws = groups["leading_ws"]
-        after_alias_keyword_ws = groups["after_alias_keyword_ws"]
-        alias = groups["alias"]
-        before_comment_ws = groups["before_comment_ws"]
-        trailing_comment = groups["trailing_comment"]
-        return cls(
-            leading_ws=leading_ws,
-            after_alias_keyword_ws=after_alias_keyword_ws,
-            alias=alias,
-            before_comment_ws=before_comment_ws,
-            trailing_comment=trailing_comment,
-        )
+    def load(cls, file: Path) -> Self:
+        text_contents = file.read_text("utf-8")
+        yaml = _create_yaml()
+        source = yaml.load(text_contents)  # pyright: ignore[reportAny, reportUnknownMemberType]
+        return cls(source)
 
-    @override
-    def render_as_raw_line(self) -> str:
-        before_comment_ws = self.before_comment_ws or (
-            " " if self.trailing_comment else ""
-        )
-        return f"{self.leading_ws}@alias{self.after_alias_keyword_ws or ' '}{self.alias}{before_comment_ws}{self.trailing_comment or ''}"
+    @overload
+    def with_added_mod(
+        self, pack: str, record: ModListRecord, comment: str | None = None
+    ) -> Self: ...
 
+    @overload
+    def with_added_mod(
+        self, pack: str, record: ModReference, comment: str | None = None
+    ) -> Self: ...
 
-@dataclass(frozen=True)
-class ReferenceLine(Line):
-    reference: str
-    leading_ws: str = ""
-    disabled: str | None = None
-    after_bang_ws: str = ""
-    before_comment_ws: str = ""
-    trailing_comment: str | None = None
+    def with_added_mod(
+        self, pack: str, record: ModListRecord | ModReference, comment: str | None = None
+    ) -> Self:
+        mod_record = _reference_to_record(record)
+        source = _copy_source(self._source)
+        sequence = _get_or_create_pack_sequence(source, pack)
+        sequence.append(_record_to_source(mod_record))  # pyright: ignore[reportUnknownMemberType]
+        if comment is not None:
+            sequence.yaml_add_eol_comment(comment, len(sequence) - 1)  # pyright: ignore[reportUnknownMemberType]
+        return self.__class__(source)
 
-    @classmethod
-    @override
-    def from_raw_line(cls, line: str) -> Self:
-        match = REFERENCE_RE.match(line)
-        if match is None:
-            raise ListFileParsingError(f"Incorrect input line for reference: {line}")
-        groups = match.groupdict()
-        return cls(
-            leading_ws=groups["leading_ws"],
-            disabled=groups["disabled"],
-            after_bang_ws=groups["after_bang_ws"],
-            reference=groups["reference"],
-            before_comment_ws=groups["before_comment_ws"],
-            trailing_comment=groups["trailing_comment"],
-        )
-
-    @override
-    def render_as_raw_line(self) -> str:
-        return f"{self.leading_ws}{self.disabled or ''}{self.after_bang_ws}{self.reference}{self.before_comment_ws}{self.trailing_comment or ''}"
+    def with_removed_mod(
+        self, reference: ModReference, comment: str | None = None
+    ) -> Self:
+        _ = comment
+        data = {
+            pack: tuple(
+                record
+                for record in records
+                if not references_match(record, reference)
+            )
+            for pack, records in self.data.items()
+        }
+        return self.__class__(_packs_to_source(data))
 
 
-@dataclass(frozen=True)
-class BlankLine(Line):
-    text: str = ""
-
-    @classmethod
-    @override
-    def from_raw_line(cls, line: str) -> Self:
-        if line.strip() != "":
-            raise ListFileParsingError(f"Incorrect input line for blank line: {line}")
-        return cls(text=line)
-
-    @override
-    def render_as_raw_line(self) -> str:
-        return self.text
+def _create_yaml() -> YAML:
+    yaml = YAML()
+    yaml.indent(mapping=2, sequence=4, offset=2)  # pyright: ignore[reportAny]
+    yaml.preserve_quotes = True
+    return yaml
 
 
-@dataclass(frozen=True)
-class CommentLine(Line):
-    comment: str
-    leading_ws: str = ""
-
-    @classmethod
-    @override
-    def from_raw_line(cls, line: str) -> Self:
-        match = COMMENT_RE.match(line)
-        if match is None:
-            raise ListFileParsingError(f"Incorrect input line for comment line: {line}")
-        groups = match.groupdict()
-        return cls(
-            leading_ws=groups["leading_ws"],
-            comment=groups["comment"],
-        )
-
-    @override
-    def render_as_raw_line(self) -> str:
-        return f"{self.leading_ws}{self.comment}"
+def _packs_to_source(
+    packs: ModListPacks,
+) -> CommentedMap:
+    source = CommentedMap()
+    for pack, records in packs.items():
+        source[pack] = CommentedSeq(_record_to_source(record) for record in records)
+    return source
 
 
-def parse_line(line: str) -> Line:
-    for cls in (
-        AliasLine,
-        ReferenceLine,
-        BlankLine,
-        CommentLine,
+def _copy_source(source: CommentedMap) -> CommentedMap:
+    return deepcopy(source)
+
+
+def _get_or_create_pack_sequence(source: CommentedMap, pack: str) -> CommentedSeq:
+    if pack not in source:
+        sequence = CommentedSeq()
+        source[pack] = sequence
+        return sequence
+    current = cast(object, source[pack])
+    if isinstance(current, CommentedSeq):
+        return current
+    if not isinstance(current, Iterable):
+        raise TypeError("Expected pack contents to be a sequence")
+    sequence = CommentedSeq(current)
+    source[pack] = sequence
+    return sequence
+
+
+def _record_to_source(record: ModListRecord) -> dict[str, object]:
+    source = _reference_to_source(record)
+    if record.before:
+        source["before"] = [
+            _reference_to_source(reference) for reference in record.before
+        ]
+    if record.after:
+        source["after"] = [
+            _reference_to_source(reference) for reference in record.after
+        ]
+    return source
+
+
+def _reference_to_source(reference: ModListReference) -> dict[str, object]:
+    match reference:
+        case ModListReferencePid(pid=pid):
+            source: dict[str, object] = {"pid": pid}
+        case ModListReferenceWid(wid=wid):
+            source = {"wid": wid}
+        case ModListReferenceLoc(loc=loc):
+            source = {"loc": loc}
+    if reference.name is not None:
+        source["name"] = reference.name
+    return source
+
+
+def _reference_to_record(reference: ModListRecord | ModReference) -> ModListRecord:
+    if isinstance(
+        reference,
+        (ModListRecordPid, ModListRecordWid, ModListRecordLoc),
     ):
-        try:
-            return cls.from_raw_line(line)
-        except ListFileParsingError:
-            continue
-    raise ListFileParsingError(f"Unknown line format: {line}")
+        return reference
+    match reference.kind:
+        case "pid":
+            return ModListRecordPid(pid=reference.reference)
+        case "wid":
+            return ModListRecordWid(wid=int(reference.reference))
+        case "loc":
+            return ModListRecordLoc(loc=reference.reference)
+
