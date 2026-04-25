@@ -246,6 +246,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pyparsing"
+version = "3.3.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/91/9c6ee907786a473bf81c5f53cf703ba0957b23ab84c264080fb5a450416f/pyparsing-3.3.2.tar.gz", hash = "sha256:c777f4d763f140633dcb6d8a3eda953bf7a214dc4eff598413c070bcdc117cbc", size = 6851574, upload-time = "2026-01-21T03:57:59.36Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/10/bd/c038d7cc38edc1aa5bf91ab8068b63d4308c66c4c8bb3cbba7dfbc049f9c/pyparsing-3.3.2-py3-none-any.whl", hash = "sha256:850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d", size = 122781, upload-time = "2026-01-21T03:57:55.912Z" },
+]
+
+[[package]]
 name = "pytest"
 version = "9.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -281,9 +290,12 @@ source = { editable = "." }
 dependencies = [
     { name = "platformdirs" },
     { name = "pydantic" },
+    { name = "pyparsing" },
     { name = "rich" },
+    { name = "ruamel-yaml" },
     { name = "steamworkspy" },
     { name = "tomlkit" },
+    { name = "typedload" },
     { name = "typer" },
 ]
 
@@ -299,9 +311,12 @@ dev = [
 requires-dist = [
     { name = "platformdirs", specifier = ">=4.9.4" },
     { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "pyparsing", specifier = ">=3.3.2" },
     { name = "rich", specifier = ">=14.3.3" },
+    { name = "ruamel-yaml", specifier = ">=0.19.1" },
     { name = "steamworkspy", specifier = ">=0.0.2" },
     { name = "tomlkit", specifier = ">=0.14.0" },
+    { name = "typedload", specifier = ">=2.40" },
     { name = "typer", specifier = ">=0.24.1" },
 ]
 
@@ -311,6 +326,15 @@ dev = [
     { name = "prek", specifier = ">=0.3.8" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "ruff", specifier = ">=0.15.7" },
+]
+
+[[package]]
+name = "ruamel-yaml"
+version = "0.19.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c7/3b/ebda527b56beb90cb7652cb1c7e4f91f48649fbcd8d2eb2fb6e77cd3329b/ruamel_yaml-0.19.1.tar.gz", hash = "sha256:53eb66cd27849eff968ebf8f0bf61f46cdac2da1d1f3576dd4ccee9b25c31993", size = 142709, upload-time = "2026-01-02T16:50:31.84Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b8/0c/51f6841f1d84f404f92463fc2b1ba0da357ca1e3db6b7fbda26956c3b82a/ruamel_yaml-0.19.1-py3-none-any.whl", hash = "sha256:27592957fedf6e0b62f281e96effd28043345e0e66001f97683aa9a40c667c93", size = 118102, upload-time = "2026-01-02T16:50:29.201Z" },
 ]
 
 [[package]]
@@ -363,6 +387,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c3/af/14b24e41977adb296d6bd1fb59402cf7d60ce364f90c890bd2ec65c43b5a/tomlkit-0.14.0.tar.gz", hash = "sha256:cf00efca415dbd57575befb1f6634c4f42d2d87dbba376128adb42c121b87064", size = 187167, upload-time = "2026-01-13T01:14:53.304Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b5/11/87d6d29fb5d237229d67973a6c9e06e048f01cf4994dee194ab0ea841814/tomlkit-0.14.0-py3-none-any.whl", hash = "sha256:592064ed85b40fa213469f81ac584f67a4f2992509a7c3ea2d632208623a3680", size = 39310, upload-time = "2026-01-13T01:14:51.965Z" },
+]
+
+[[package]]
+name = "typedload"
+version = "2.40"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/e8/b335c78c8822c24102bac0d62d8f09ff0c1e6dd9bd00291bb2ef275d107f/typedload-2.40.tar.gz", hash = "sha256:92909fc3635c52918666f68d7086e976e0037999ee3c711c99e027308f93fd82", size = 51898, upload-time = "2026-02-11T08:37:17.445Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/49/c7/00eb5a52021cc0ffe1b5a568320b0e94ed36139851ac36a3768c6f2e900b/typedload-2.40-py3-none-any.whl", hash = "sha256:7cd070f13ac6d2152c08603fc035f9f808e98f22ef9f14a3e4ced09734cfa691", size = 42964, upload-time = "2026-02-11T08:37:15.604Z" },
 ]
 
 [[package]]

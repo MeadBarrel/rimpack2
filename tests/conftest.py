@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from shutil import copytree
 
 import pytest
 from pytest import MonkeyPatch
@@ -85,6 +86,20 @@ def rimworld_root_data(rimworld_root: Path) -> Path:
     result = rimworld_root / "Data"
     result.mkdir(parents=True, exist_ok=True)
     return result
+
+
+@pytest.fixture
+def rimworld_root_mods(rimworld_root: Path) -> Path:
+    result = rimworld_root / "Mods"
+    result.mkdir(parents=True, exist_ok=True)
+    copytree(Path(__file__) / "data" / "root_mods", result)
+    return result
+
+
+@pytest.fixture
+def rimworld_workshop_mods(workshop_root: Path) -> Path:
+    copytree(Path(__file__) / "data" / "workshop_mods", workshop_root)
+    return workshop_root
 
 
 @pytest.fixture
