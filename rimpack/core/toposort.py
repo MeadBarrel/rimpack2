@@ -5,12 +5,9 @@ from collections.abc import Collection, Hashable, Iterable
 from dataclasses import dataclass, field
 from heapq import heappop, heappush
 
+from rimpack.core.exceptions import CycleError as CycleError
 from rimpack.core.mod.about import AboutModMetadata
 from rimpack.tools import normalize_rimworld_version
-
-
-class CycleError(ValueError):
-    """Raised when the dependency graph contains a cycle."""
 
 
 @dataclass(frozen=True)

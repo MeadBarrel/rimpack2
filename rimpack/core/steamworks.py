@@ -13,6 +13,12 @@ from typing import Protocol, cast, final
 from urllib.parse import parse_qs, urlparse
 
 from rimpack.constants import RIMWORLD_STEAM_APP_ID
+from rimpack.core.exceptions import (
+    SteamworksError as SteamworksError,
+    SteamworksResolutionError as SteamworksResolutionError,
+    SteamworksSubscriptionError as SteamworksSubscriptionError,
+    SteamworksUnavailableError as SteamworksUnavailableError,
+)
 from rimpack.core.mod.modfolder import ModFolder, load_mod_folder
 
 type SteamworksOperation = Callable[[int], object]
@@ -26,22 +32,6 @@ logger = logging.getLogger(__name__)
 
 class _Closable(Protocol):
     def close(self) -> None: ...
-
-
-class SteamworksError(RuntimeError):
-    """Base error for Steamworks integration failures."""
-
-
-class SteamworksUnavailableError(SteamworksError):
-    """Raised when the Steamworks client cannot be loaded or initialized."""
-
-
-class SteamworksSubscriptionError(SteamworksError):
-    """Raised when Steamworks rejects a workshop subscription request."""
-
-
-class SteamworksResolutionError(SteamworksError):
-    """Raised when a workshop item cannot be resolved into a local mod folder."""
 
 
 @final

@@ -1,10 +1,9 @@
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
+
+from rimpack.core.exceptions import ModFolderError as ModFolderError
+
 from .about import AboutModMetadata, load_about_xml
-
-
-class ModFolderError(ValueError):
-    """Raised when a mod folder does not contain the expected files."""
 
 
 @dataclass(frozen=True)

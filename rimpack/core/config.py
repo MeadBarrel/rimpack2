@@ -10,10 +10,7 @@ import winreg
 import tomlkit
 
 from rimpack.constants import RIMWORLD_STEAM_APP_ID
-
-
-class RimworldConfigParseError(ValueError):
-    pass
+from rimpack.core.exceptions import RimworldConfigParseError as RimworldConfigParseError
 
 
 @dataclass(frozen=True)

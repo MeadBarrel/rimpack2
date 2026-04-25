@@ -4,9 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from xml.etree import ElementTree
 
-
-class AboutXmlError(ValueError):
-    """Raised when About.xml does not match the expected structure."""
+from rimpack.core.exceptions import AboutXmlError as AboutXmlError
 
 
 @dataclass(frozen=True)

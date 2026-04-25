@@ -8,6 +8,13 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 import typedload
 
+from rimpack.core.exceptions import (
+    ModListError as ModListError,
+    ModListModAlreadyExistsError as ModListModAlreadyExistsError,
+    ModListModDoesNotExistError as ModListModDoesNotExistError,
+    ModListPackAlreadyExistsError as ModListPackAlreadyExistsError,
+    ModListPackDoesNotExistError as ModListPackDoesNotExistError,
+)
 from rimpack.core.types import ModReference, references_match
 
 
@@ -82,33 +89,6 @@ ModListRecord: TypeAlias = ModListRecordPid | ModListRecordWid | ModListRecordLo
 ModListRecords: TypeAlias = tuple[ModListRecord, ...]
 ModListPacks: TypeAlias = dict[str, ModListRecords]
 ModListSource: TypeAlias = ModListPacks | dict[str, object] | CommentedMap
-
-
-class ModListError(ValueError): ...
-
-
-class ModListPackDoesNotExistError(ModListError):
-    def __init__(self, pack: str) -> None:
-        super().__init__(f"Mod list pack does not exist: {pack}")
-
-
-class ModListPackAlreadyExistsError(ModListError):
-    def __init__(self, pack: str) -> None:
-        super().__init__(f"Mod list pack already exists: {pack}")
-
-
-class ModListModAlreadyExistsError(ModListError):
-    def __init__(self, reference: ModReference) -> None:
-        super().__init__(
-            f"Mod already exists: {reference.kind}:{reference.reference}"
-        )
-
-
-class ModListModDoesNotExistError(ModListError):
-    def __init__(self, reference: ModReference) -> None:
-        super().__init__(
-            f"Mod does not exist: {reference.kind}:{reference.reference}"
-        )
 
 
 @final
