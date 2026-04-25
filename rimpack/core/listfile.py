@@ -2,7 +2,7 @@ from copy import deepcopy
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal, Self, TypeAlias, cast, final, overload
+from typing import Literal, Self, TypeAlias, cast, final, overload
 
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
@@ -81,14 +81,43 @@ class ModListRecordLoc(ModListReferenceLoc, ModListRecordFields): ...
 ModListRecord: TypeAlias = ModListRecordPid | ModListRecordWid | ModListRecordLoc
 ModListRecords: TypeAlias = tuple[ModListRecord, ...]
 ModListPacks: TypeAlias = dict[str, ModListRecords]
+ModListSource: TypeAlias = ModListPacks | dict[str, object] | CommentedMap
+
+
+class ModListError(ValueError): ...
+
+
+class ModListPackDoesNotExistError(ModListError):
+    def __init__(self, pack: str) -> None:
+        super().__init__(f"Mod list pack does not exist: {pack}")
+
+
+class ModListPackAlreadyExistsError(ModListError):
+    def __init__(self, pack: str) -> None:
+        super().__init__(f"Mod list pack already exists: {pack}")
+
+
+class ModListModAlreadyExistsError(ModListError):
+    def __init__(self, reference: ModReference) -> None:
+        super().__init__(
+            f"Mod already exists: {reference.kind}:{reference.reference}"
+        )
+
+
+class ModListModDoesNotExistError(ModListError):
+    def __init__(self, reference: ModReference) -> None:
+        super().__init__(
+            f"Mod does not exist: {reference.kind}:{reference.reference}"
+        )
 
 
 @final
 class ModList:
     def __init__(
         self,
-        source: Any,  # pyright: ignore[reportAny, reportExplicitAny]
+        source: ModListSource | None = None,
     ) -> None:
+        source = {} if source is None else source
         self.data: ModListPacks = typedload.load(source, ModListPacks)
         self._source = (
             source
@@ -106,7 +135,16 @@ class ModList:
         text_contents = file.read_text("utf-8")
         yaml = _create_yaml()
         source = yaml.load(text_contents)  # pyright: ignore[reportAny, reportUnknownMemberType]
-        return cls(source)
+        return cls(cast(CommentedMap, source))
+
+    def with_added_pack(self, pack: str, comment: str | None = None) -> Self:
+        if pack in self.data:
+            raise ModListPackAlreadyExistsError(pack)
+        source = _copy_source(self._source)
+        source[pack] = CommentedSeq()
+        if comment is not None:
+            source.yaml_add_eol_comment(comment, pack)  # pyright: ignore[reportUnknownMemberType]
+        return self.__class__(source)
 
     @overload
     def with_added_mod(
@@ -122,8 +160,12 @@ class ModList:
         self, pack: str, record: ModListRecord | ModReference, comment: str | None = None
     ) -> Self:
         mod_record = _reference_to_record(record)
+        if pack not in self.data:
+            raise ModListPackDoesNotExistError(pack)
+        if _contains_reference(self.data, mod_record):
+            raise ModListModAlreadyExistsError(mod_record)
         source = _copy_source(self._source)
-        sequence = _get_or_create_pack_sequence(source, pack)
+        sequence = _get_pack_sequence(source, pack)
         sequence.append(_record_to_source(mod_record))  # pyright: ignore[reportUnknownMemberType]
         if comment is not None:
             sequence.yaml_add_eol_comment(comment, len(sequence) - 1)  # pyright: ignore[reportUnknownMemberType]
@@ -133,15 +175,11 @@ class ModList:
         self, reference: ModReference, comment: str | None = None
     ) -> Self:
         _ = comment
-        data = {
-            pack: tuple(
-                record
-                for record in records
-                if not references_match(record, reference)
-            )
-            for pack, records in self.data.items()
-        }
-        return self.__class__(_packs_to_source(data))
+        if not _contains_reference(self.data, reference):
+            raise ModListModDoesNotExistError(reference)
+        source = _copy_source(self._source)
+        _remove_reference_from_source(source, reference)
+        return self.__class__(source)
 
 
 def _create_yaml() -> YAML:
@@ -164,11 +202,7 @@ def _copy_source(source: CommentedMap) -> CommentedMap:
     return deepcopy(source)
 
 
-def _get_or_create_pack_sequence(source: CommentedMap, pack: str) -> CommentedSeq:
-    if pack not in source:
-        sequence = CommentedSeq()
-        source[pack] = sequence
-        return sequence
+def _get_pack_sequence(source: CommentedMap, pack: str) -> CommentedSeq:
     current = cast(object, source[pack])
     if isinstance(current, CommentedSeq):
         return current
@@ -177,6 +211,25 @@ def _get_or_create_pack_sequence(source: CommentedMap, pack: str) -> CommentedSe
     sequence = CommentedSeq(current)
     source[pack] = sequence
     return sequence
+
+
+def _contains_reference(packs: ModListPacks, reference: ModReference) -> bool:
+    return any(
+        references_match(record, reference)
+        for records in packs.values()
+        for record in records
+    )
+
+
+def _remove_reference_from_source(
+    source: CommentedMap, reference: ModReference
+) -> None:
+    mod_list = ModList(source)
+    for pack, records in mod_list.data.items():
+        sequence = _get_pack_sequence(source, pack)
+        for index in reversed(range(len(records))):
+            if references_match(records[index], reference):
+                del sequence[index]
 
 
 def _record_to_source(record: ModListRecord) -> dict[str, object]:

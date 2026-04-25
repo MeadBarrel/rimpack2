@@ -6,7 +6,7 @@ from typer.testing import CliRunner
 
 from rimpack.cli.main import app
 from rimpack.core.config import Config
-from rimpack.core.listfile import ListFile, PackageIdReference
+from rimpack.core.listfile import ModList, ModListPacks, ModListRecord, ModListRecordPid
 from rimpack.core.mod.about import AboutModMetadata
 from rimpack.core.mod.modfolder import ModFolder
 from rimpack.core.packfile import PackConfig
@@ -88,19 +88,19 @@ def test_init(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         mod_file_path = Path(mod_file)
         assert mod_file_path.exists()
         mod_file_suffix = mod_file_path.suffix
-        assert mod_file_suffix == ".list"
+        assert mod_file_suffix == ".yml"
         mod_file_prefix = mod_file_path.stem
-        digits_part, name_part = mod_file_prefix.split("_", 1)
+        digits_part, _ = mod_file_prefix.split("_", 1)
         assert digits_part.isdigit()
-        list_file = ListFile.from_path(mod_file_path)
-        assert list_file.alias == name_part
 
-    assert "lists/00_ludeon.list" in mod_files
-    ludeon_list_path = Path("lists/00_ludeon.list")
-    ludeon_list = ListFile.from_path(ludeon_list_path)
-    ludeon_list_references = ludeon_list.references
-    assert ludeon_list_references == (
-        PackageIdReference("Ludeon.RimWorld"),
-        PackageIdReference("Ludeon.RimWorld.Royalty"),
-        PackageIdReference("Ludeon.RimWorld.Ideology"),
-    )
+    assert "lists/00_ludeon.yml" in mod_files
+    ludeon_list_path = Path("lists/00_ludeon.yml")
+    ludeon_list = ModList.load(ludeon_list_path)
+    expected: ModListPacks = {
+        "ludeon": (
+            ModListRecordPid(pid="Ludeon.RimWorld"),
+            ModListRecordPid(pid="Ludeon.RimWorld.Royalty"),
+            ModListRecordPid(pid="Ludeon.RimWorld.Ideology"),
+        )
+    }
+    assert ludeon_list.data == expected

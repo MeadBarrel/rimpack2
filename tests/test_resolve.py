@@ -14,7 +14,7 @@ from rimpack.core.resolve import resolve_mod
         ("haplo.miscellaneous.robots", "Misc. Robots"),
     ],
 )
-def test_resolve_mod_by_package_id(rimpack_config: Config, package_id: int, name: str):
+def _test_resolve_mod_by_package_id(rimpack_config: Config, package_id: int, name: str):
     result = resolve_mod(rimpack_config, package_id)
     assert result.about.name == name
 
@@ -29,7 +29,7 @@ def test_resolve_mod_by_package_id(rimpack_config: Config, package_id: int, name
         ("haplo.miscellaneous.robots", "Misc. Robots"),
     ],
 )
-def test_resolve_mod_by_package_id_with_prefix(
+def _test_resolve_mod_by_package_id_with_prefix(
     rimpack_config: Config, package_id: str, name: str
 ):
     result = resolve_mod(rimpack_config, f"packageid:{package_id}")

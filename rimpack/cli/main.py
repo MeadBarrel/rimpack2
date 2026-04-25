@@ -14,13 +14,7 @@ from rimpack.core.config import (
     find_rimworld_workshop_path,
     find_steam_root,
 )
-from rimpack.core.listfile import (
-    AliasLine,
-    BlankLine,
-    CommentLine,
-    ListFile,
-    ReferenceLine,
-)
+from rimpack.core.listfile import ModList, ModListRecord, ModListRecordPid
 from rimpack.core.mod.about import AboutModMetadata, parse_about_xml
 from rimpack.core.packfile import PackConfig
 from rimpack.core.steamworks import Steamworks, resolve_rimworld_workshop_mod_by_id
@@ -46,52 +40,28 @@ def cli_init():
     Path("lists").mkdir()
 
     list_files = [
-        "00_ludeon.list",
-        "05_libraries.list",
-        "10_core.list",
-        "50_textures.list",
-        "55_sounds.list",
-        "90_patches.list",
+        "00_ludeon.yml",
+        "05_libraries.yml",
+        "10_core.yml",
+        "50_textures.yml",
+        "55_sounds.yml",
+        "90_patches.yml",
     ]
     list_files = [Path("lists") / item for item in list_files]
 
-    lines = [
-        AliasLine("ludeon"),
-        BlankLine(),
-        CommentLine("# Rimworld core and DLCs"),
-        *[ReferenceLine(f"packageid:{dlc}") for dlc in dlcs],
-    ]
+    ludeon_mod_list = ModList().with_added_pack("ludeon")
+    for dlc in dlcs:
+        ludeon_mod_list = ludeon_mod_list.with_added_mod(
+            "ludeon", ModListRecordPid(pid=dlc)
+        )
+    ludeon_mod_list.dump(list_files[0])
 
-    ludeon_list = ListFile(tuple(lines))
-    ludeon_list.save(list_files[0])
-    libraries_list = ListFile(
-        (
-            AliasLine("libraries"),
-            BlankLine(),
-            CommentLine("# Libraries"),
-        )
-    )
-    libraries_list.save(list_files[1])
-    core_list = ListFile(
-        (AliasLine("core"), BlankLine(), CommentLine("# Core modpack mods"))
-    )
-    core_list.save(list_files[2])
-    textures_list = ListFile(
-        (AliasLine("textures"), BlankLine(), CommentLine("# Texture replacers"))
-    )
-    textures_list.save(list_files[3])
-    sounds_list = ListFile(
-        (AliasLine("sounds"), BlankLine(), CommentLine("# Sound replacers"))
-    )
-    sounds_list.save(list_files[4])
-    patches_list = ListFile(
-        (
-            AliasLine("patches"),
-            BlankLine(),
-            CommentLine("# Patches"),
-        )
-    )
-    patches_list.save(list_files[5])
+    ModList().with_added_pack("libraries", "Core Libraries").dump(list_files[1])
+    ModList().with_added_pack("core").dump(list_files[2])
+    ModList().with_added_pack("textures").dump(list_files[3])
+    ModList().with_added_pack("sounds").dump(list_files[4])
+    ModList().with_added_pack("patches").dump(list_files[5])
+
     list_files_str = [item.as_posix() for item in list_files]
 
     pack_file = PackConfig.initialize(path.name, "1.6", list_files_str)
