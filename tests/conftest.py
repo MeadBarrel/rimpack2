@@ -92,13 +92,17 @@ def rimworld_root_data(rimworld_root: Path) -> Path:
 def rimworld_root_mods(rimworld_root: Path) -> Path:
     result = rimworld_root / "Mods"
     result.mkdir(parents=True, exist_ok=True)
-    copytree(Path(__file__) / "data" / "root_mods", result)
+    copytree(Path(__file__).parent / "data" / "root_mods", result, dirs_exist_ok=True)
     return result
 
 
 @pytest.fixture
 def rimworld_workshop_mods(workshop_root: Path) -> Path:
-    copytree(Path(__file__) / "data" / "workshop_mods", workshop_root)
+    copytree(
+        Path(__file__).parent / "data" / "workshop_mods",
+        workshop_root,
+        dirs_exist_ok=True,
+    )
     return workshop_root
 
 
