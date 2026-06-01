@@ -81,7 +81,9 @@ def cli_init():
     data = CommentedSeq([{"pid": dlc} for dlc in dlcs])
     data.yaml_set_start_comment("Core")  # pyright: ignore[reportUnknownMemberType]
     YAML().dump(data, modules_path_ludeon)  # pyright: ignore[reportUnknownMemberType]
-    modules_path_core.write_text("")
+    modules_path_core.write_text(
+        "# This module is expected to contain the core modules of the modpack.\n"
+    )
 
 
 def _read_config(config_dir: Path) -> Config:

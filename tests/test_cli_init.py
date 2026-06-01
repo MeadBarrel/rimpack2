@@ -47,7 +47,7 @@ def test_init_creates_expected_module_files_in_cwd(
 
 @pytest.mark.usefixtures("populated_config")
 @pytest.mark.usefixtures("populated_rimworld")
-def test_init_creates_empty_core_module(
+def test_init_creates_core_module_without_yaml_data(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     monkeypatch.chdir(tmp_path)
@@ -55,7 +55,7 @@ def test_init_creates_empty_core_module(
     result = runner.invoke(app, ["init"])
 
     assert result.exit_code == 0
-    assert (tmp_path / "modules" / "10_core.yml").read_text() == ""
+    assert YAML().load(tmp_path / "modules" / "10_core.yml") is None
 
 
 @pytest.mark.usefixtures("populated_config")
