@@ -1,5 +1,5 @@
 .pytest_tmp
-main.py
+/main.py
 
 # Python-generated files
 __pycache__/

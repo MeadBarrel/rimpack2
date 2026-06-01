@@ -108,7 +108,7 @@ def test_init_creates_core_correct_order(
     assert result.exit_code == 0
 
     config_path = Path("pack.yml")
-    core_path = Path("modules/00_core.yml")
+    core_path = Path("modules/00_ludeon.yml")
     yaml = YAML().load(config_path.read_text())
     assert Path(yaml["pack"]["modules"][0]) == core_path
     assert core_path.exists()
