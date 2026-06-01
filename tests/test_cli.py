@@ -83,13 +83,6 @@ def test_create_config(config_root: Path, rimworld_root: Path, workshop_root: Pa
     }
 
 
-def test_init_no_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.chdir(tmp_path)
-    result = runner.invoke(app, ["init"])
-    assert result.exit_code == 1
-    assert isinstance(result.exception, FileNotFoundError)
-
-
 def test_init_no_config_shows_friendly_error(
     tmp_path: Path, config_root: Path, monkeypatch: pytest.MonkeyPatch
 ):
@@ -100,8 +93,9 @@ def test_init_no_config_shows_friendly_error(
     assert result.exit_code == 1
     assert not isinstance(result.exception, FileNotFoundError)
     assert "Traceback" not in result.output
-    assert "config.yml" in result.output
+    assert "No RimPack config file found" in result.output
     assert str(config_root / "config.yml") in result.output
+    assert "rimpack create-config" in result.output
 
 
 @pytest.mark.usefixtures("populated_config")
