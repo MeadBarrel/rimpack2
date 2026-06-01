@@ -68,18 +68,20 @@ def cli_init():
 
     path = Path.cwd()
 
-    src = {"pack": {"modules": ["modules/00_ludeon.yml"]}}
+    src = {"pack": {"modules": ["modules/00_ludeon.yml", "modules/10_core.yml"]}}
 
     pack_file_path = path / "pack.yml"
     YAML().dump(src, pack_file_path)  # pyright: ignore[reportUnknownMemberType]
 
     modules_path = path / "modules"
     modules_path.mkdir()
-    modules_path_core = modules_path / "00_ludeon.yml"
+    modules_path_ludeon = modules_path / "00_ludeon.yml"
+    modules_path_core = modules_path / "10_core.yml"
 
     data = CommentedSeq([{"pid": dlc} for dlc in dlcs])
     data.yaml_set_start_comment("Core")  # pyright: ignore[reportUnknownMemberType]
-    YAML().dump(data, modules_path_core)  # pyright: ignore[reportUnknownMemberType]
+    YAML().dump(data, modules_path_ludeon)  # pyright: ignore[reportUnknownMemberType]
+    modules_path_core.write_text("")
 
 
 def _read_config(config_dir: Path) -> Config:
