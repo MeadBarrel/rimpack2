@@ -1,0 +1,99 @@
+from collections.abc import Iterable
+from copy import deepcopy
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Self, final
+from pydantic import BaseModel
+from ruamel.yaml import YAML
+from tomlkit import TOMLDocument, dumps, table  # pyright: ignore[reportUnknownVariableType]
+from tomlkit.items import Array, Table
+from ruamel.yaml.comments import CommentedMap
+
+
+@dataclass(frozen=True, kw_only=True)
+class PackPack:
+    name: str
+    rimworld_version: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class PackLayout(BaseModel):
+    mod_files: tuple[str, ...]
+    mod_folders: tuple[Path, ...]
+
+
+@dataclass(frozen=True, kw_only=True)
+class PackFileModel(BaseModel):
+    pack: PackPack
+    layout: PackLayout
+
+
+@final
+class PackConfig:
+    def __init__(self, source: CommentedMap) -> None:
+        pass
+
+    @classmethod
+    def from_yaml(cls, path: Path) -> Self:
+        return cls.from_source(path.read_text())
+
+    @classmethod
+    def from_source(cls, source: str) -> Self:
+        yaml = _create_yaml()
+        yaml_src = yaml.load(source)
+
+        doc, model = load_pack_file(source)
+        return cls(doc, model)
+
+    @classmethod
+    def initialize(
+        cls,
+        name: str,
+        rimworld_version: str,
+        mod_files: Iterable[str],
+    ) -> Self:
+        doc = TOMLDocument()
+        pack = table()
+        _ = pack.add("name", name)
+        _ = pack.add("rimworld_version", rimworld_version)
+        _ = doc.add("pack", pack)
+        layout = table()
+        _ = layout.add("mod_files", list(mod_files))
+        _ = doc.add("layout", layout)
+        model = PackFileModel.model_validate(doc)
+        return cls(doc, model)
+
+    def save(self, path: Path):
+        _ = path.write_text(self.render())
+
+    def render(self) -> str:
+        return dumps(self._doc)
+
+    @property
+    def name(self) -> str:
+        return self._model.pack.name
+
+    @property
+    def rimworld_version(self) -> str:
+        return self._model.pack.rimworld_version
+
+    @property
+    def mod_files(self) -> tuple[str, ...]:
+        return self._model.layout.mod_files
+
+    def with_added_mod_file(self, mod_file: str) -> Self:
+        doc = deepcopy(self._doc)
+        layout = doc["layout"]
+        assert isinstance(layout, Table)
+        mod_files = layout["mod_files"]
+        assert isinstance(mod_files, Array)
+        mod_files.append(mod_file)  # pyright: ignore[reportUnknownMemberType]
+        model = PackFileModel.model_validate(doc)
+        return self.__class__(doc, model)
+
+
+def _create_yaml() -> YAML:
+    yaml = YAML()
+    yaml.indent(mapping=2, sequence=4, offset=2)  # pyright: ignore[reportAny]
+    yaml.preserve_quotes = True
+    return yaml

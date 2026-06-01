@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from rimpack.core.mod.about import (
+from rimpack.mod.about import (
     AboutDependency,
     AboutModMetadata,
     AboutTextValue,

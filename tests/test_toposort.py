@@ -1,5 +1,5 @@
-from rimpack.core.mod.about import parse_about_xml
-from rimpack.core.toposort import (
+from rimpack.mod.about import parse_about_xml
+from rimpack.toposort import (
     mod_to_sort_item,
     sort_package_ids,
     stable_toposort,

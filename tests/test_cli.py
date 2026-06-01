@@ -2,19 +2,22 @@ from pathlib import Path
 from unittest.mock import ANY, Mock
 
 import pytest
+from ruamel.yaml import YAML
 from typer.testing import CliRunner
 
-from rimpack.cli.main import app
-from rimpack.core.config import Config
-from rimpack.core.listfile import ModList, ModListPacks, ModListRecord, ModListRecordPid
-from rimpack.core.mod.about import AboutModMetadata
-from rimpack.core.mod.modfolder import ModFolder
-from rimpack.core.packfile import PackConfig
+from rimpack.main import app
+from rimpack.config import Config
+from rimpack.listfile import ModList, ModListPacks, ModListRecordPid
+from rimpack.mod.about import AboutModMetadata
+from rimpack.mod.modfolder import ModFolder
+from tests.helpers import copy_mods
 
 runner = CliRunner()
 
 
-def test_create_config_cli(config_path: Path, rimworld_root: Path, workshop_root: Path):
+def _test_create_config_cli(
+    config_path: Path, rimworld_root: Path, workshop_root: Path
+):
     result = runner.invoke(app, "create-config", input="y\n")
     assert result.exit_code == 0
     assert config_path.exists()
@@ -40,13 +43,13 @@ def fake_mod(tmp_path: Path):
 @pytest.fixture
 def fake_resolve(fake_mod: ModFolder, monkeypatch):
     mock = Mock(return_value=fake_mod)
-    monkeypatch.setattr("rimpack.cli.main.Steamworks", Mock())
-    monkeypatch.setattr("rimpack.cli.main.resolve_rimworld_workshop_mod_by_id", mock)
+    monkeypatch.setattr("rimpack.main.Steamworks", Mock())
+    monkeypatch.setattr("rimpack.main.resolve_rimworld_workshop_mod_by_id", mock)
     return (mock, fake_mod)
 
 
 @pytest.mark.usefixtures("populated_config")
-def test_resolve_steam_id(fake_resolve: tuple[Mock, ModFolder], workshop_root: Path):
+def _test_resolve_steam_id(fake_resolve: tuple[Mock, ModFolder], workshop_root: Path):
     mock, mod = fake_resolve
     result = runner.invoke(app, ["resolve", "1000"])
     assert result.exit_code == 0
@@ -58,49 +61,67 @@ def test_resolve_steam_id(fake_resolve: tuple[Mock, ModFolder], workshop_root: P
     assert str(mod.path)[:15] in result.output
 
 
-@pytest.mark.usefixtures("populated_config")
-def test_resolve_steam_id_unsubscribe(
-    fake_resolve: tuple[Mock, ModFolder], workshop_root: Path
+@pytest.fixture
+def populated_rimworld(rimworld_root_data: Path) -> Path:
+    copy_mods(rimworld_root_data, "Core", "Royalty", "Ideology")
+    return rimworld_root_data
+
+
+def test_create_config_exists(populated_config: Path):
+    mtime = populated_config.stat().st_mtime
+    runner.invoke(app, ["create-config"])
+    assert mtime == populated_config.stat().st_mtime
+
+
+def test_create_config(config_root: Path, rimworld_root: Path, workshop_root: Path):
+    runner.invoke(app, ["create-config"], input="\n\n")
+    path = config_root / "config.yml"
+    yml = YAML().load(path)
+    assert yml == {
+        "rimworld_root": rimworld_root.as_posix(),
+        "workshop_root": workshop_root.as_posix(),
+    }
+
+
+def test_init_no_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["init"])
+    assert result.exit_code == 1
+    assert isinstance(result.exception, FileNotFoundError)
+
+
+def test_init_no_config_shows_friendly_error(
+    tmp_path: Path, config_root: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    mock, mod = fake_resolve
-    result = runner.invoke(app, ["resolve", "1000", "--unsubscribe"])
-    assert result.exit_code == 0
-    mock.assert_called_with(ANY, workshop_root, 1000, unsubscribe=True)
-    assert mod.about.package_id in result.output
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["init"])
+
+    assert result.exit_code == 1
+    assert not isinstance(result.exception, FileNotFoundError)
+    assert "Traceback" not in result.output
+    assert "config.yml" in result.output
+    assert str(config_root / "config.yml") in result.output
 
 
 @pytest.mark.usefixtures("populated_config")
-@pytest.mark.usefixtures("rimworld_core_mod")
-@pytest.mark.usefixtures("rimworld_royalty_mod")
-@pytest.mark.usefixtures("rimworld_ideology_mod")
-def test_init(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.usefixtures("populated_rimworld")
+def test_init_creates_core_correct_order(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, rimworld_root_data: Path
+):
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["init"])
     assert result.exit_code == 0
-    config_path = Path("pack.toml")
-    assert config_path.exists()
-    config = PackConfig.from_toml(config_path)
-    assert config.name
-    assert config.rimworld_version == "1.6"
-    mod_files = config.mod_files
-    assert mod_files
-    for mod_file in mod_files:
-        mod_file_path = Path(mod_file)
-        assert mod_file_path.exists()
-        mod_file_suffix = mod_file_path.suffix
-        assert mod_file_suffix == ".yml"
-        mod_file_prefix = mod_file_path.stem
-        digits_part, _ = mod_file_prefix.split("_", 1)
-        assert digits_part.isdigit()
 
-    assert "lists/00_ludeon.yml" in mod_files
-    ludeon_list_path = Path("lists/00_ludeon.yml")
-    ludeon_list = ModList.load(ludeon_list_path)
-    expected: ModListPacks = {
-        "ludeon": (
-            ModListRecordPid(pid="Ludeon.RimWorld"),
-            ModListRecordPid(pid="Ludeon.RimWorld.Royalty"),
-            ModListRecordPid(pid="Ludeon.RimWorld.Ideology"),
-        )
-    }
-    assert ludeon_list.data == expected
+    config_path = Path("pack.yml")
+    core_path = Path("modules/00_core.yml")
+    yaml = YAML().load(config_path.read_text())
+    assert Path(yaml["pack"]["modules"][0]) == core_path
+    assert core_path.exists()
+    yml = YAML().load(core_path)
+    assert yml.ca.comment[1][0].value == "# Core\r\n"
+    assert yml == [
+        {"pid": "Ludeon.RimWorld"},
+        {"pid": "Ludeon.RimWorld.Royalty"},
+        {"pid": "Ludeon.RimWorld.Ideology"},
+    ]

@@ -1,7 +1,7 @@
 from pathlib import Path
 import pytest
 
-from rimpack.core.steamworks import (
+from rimpack.steamworks import (
     Steamworks,
     SteamworksError,
     resolve_rimworld_workshop_mod_by_id,
@@ -54,7 +54,7 @@ def test_resolve_rimworld_workshop_mod_by_id_subscribe_failed(
             return
 
     monkeypatch.setattr(
-        "rimpack.core.steamworks._wait_for_workshop_mod", lambda *_: None
+        "rimpack.steamworks._wait_for_workshop_mod", lambda *_: None
     )
 
     steamworks = FakeSteamworks()

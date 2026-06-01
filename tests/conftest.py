@@ -6,48 +6,80 @@ from shutil import copytree
 import pytest
 from pytest import MonkeyPatch
 
-from rimpack.cli.main import console
-from rimpack.core.config import Config
+from rimpack.main import console
+from rimpack.config import Config
 
 
 @pytest.fixture()
-def config_path(tmp_path: Path):
-    config_path = tmp_path / "config.toml"
-    return config_path
+def fs_root(tmp_path: Path) -> Path:
+    return tmp_path
 
 
-@pytest.fixture(autouse=True)
-def fake_config_path(config_path: Path, monkeypatch: MonkeyPatch):
-    monkeypatch.setattr(
-        Config, "get_default_config_path", staticmethod(lambda: config_path)
-    )
-    return config_path
-
-
-@pytest.fixture
-def rimworld_root(tmp_path: Path) -> Path:
-    return tmp_path / "rimworld"
+@pytest.fixture()
+def config_root(fs_root: Path, monkeypatch: MonkeyPatch) -> Path:
+    result = fs_root / "config"
+    result.mkdir(exist_ok=True)
+    monkeypatch.setattr("rimpack.main.get_default_config_dir", lambda: result)
+    return result
 
 
 @pytest.fixture
-def workshop_root(tmp_path: Path) -> Path:
-    return tmp_path / "Workshop"
-
-
-@pytest.fixture(autouse=True)
-def fake_rimworld_path(rimworld_root: Path, monkeypatch: pytest.MonkeyPatch):
+def rimworld_root(fs_root: Path, monkeypatch: MonkeyPatch) -> Path:
+    result = fs_root / "rimworld"
+    result.mkdir(exist_ok=True)
     monkeypatch.setattr(
-        "rimpack.core.config._find_rimworld_root",
-        lambda _: rimworld_root,
+        "rimpack.main.find_rimworld_root",
+        lambda _: result,
     )
+    return result
 
 
-@pytest.fixture(autouse=True)
-def fake_steam_workshop_root(workshop_root: Path, monkeypatch: pytest.MonkeyPatch):
+@pytest.fixture
+def rimworld_root_data(rimworld_root: Path) -> Path:
+    result = rimworld_root / "Data"
+    result.mkdir(exist_ok=True)
+    return result
+
+
+@pytest.fixture
+def rimworld_root_mods(rimworld_root: Path) -> Path:
+    result = rimworld_root / "Mods"
+    result.mkdir(exist_ok=True)
+    return result
+
+
+@pytest.fixture
+def steam_root(fs_root: Path) -> Path:
+    result = fs_root / "Steam"
+    result.mkdir(exist_ok=True)
+    return result
+
+
+@pytest.fixture
+def workshop_root(steam_root: Path, monkeypatch: MonkeyPatch) -> Path:
+    result = steam_root / "Workshop"
+    result.mkdir(exist_ok=True)
     monkeypatch.setattr(
-        "rimpack.core.config._find_rimworld_workshop_path",
-        lambda _: workshop_root,
+        "rimpack.main.find_rimworld_workshop_path",
+        lambda _: result,
     )
+    return result
+
+
+@pytest.fixture
+def populated_config(
+    config_root: Path,
+    rimworld_root: Path,
+    workshop_root: Path,
+    monkeypatch: MonkeyPatch,
+) -> Path:
+    src = f"""
+rimworld_root: {rimworld_root.as_posix()}
+workshop_root: {workshop_root.as_posix()}
+    """
+    path = config_root / "config.yml"
+    path.write_text(src)
+    return path
 
 
 @dataclass
@@ -65,117 +97,3 @@ def fake_console_status(monkeypatch: MonkeyPatch):
     result = FakeConsoleStatus([])
     monkeypatch.setattr(console, "status", result)
     return result
-
-
-@pytest.fixture
-def rimpack_config(rimworld_root: Path, workshop_root: Path) -> Config:
-    source = f"""
-    rimworld_path="{rimworld_root.as_posix()}"
-    rimworld_workshop_path="{workshop_root.as_posix()}"
-    """
-    return Config.from_toml_str(source)
-
-
-@pytest.fixture
-def populated_config(rimpack_config: Config, config_path: Path):
-    rimpack_config.save(config_path)
-
-
-@pytest.fixture
-def rimworld_root_data(rimworld_root: Path) -> Path:
-    result = rimworld_root / "Data"
-    result.mkdir(parents=True, exist_ok=True)
-    return result
-
-
-@pytest.fixture
-def rimworld_root_mods(rimworld_root: Path) -> Path:
-    result = rimworld_root / "Mods"
-    result.mkdir(parents=True, exist_ok=True)
-    copytree(Path(__file__).parent / "data" / "root_mods", result, dirs_exist_ok=True)
-    return result
-
-
-@pytest.fixture
-def rimworld_workshop_mods(workshop_root: Path) -> Path:
-    copytree(
-        Path(__file__).parent / "data" / "workshop_mods",
-        workshop_root,
-        dirs_exist_ok=True,
-    )
-    return workshop_root
-
-
-@pytest.fixture
-def rimworld_core_mod(rimworld_root_data: Path):
-    about_path = rimworld_root_data / "Core" / "About" / "About.xml"
-    about_path.parent.mkdir(parents=True, exist_ok=True)
-    about_xml = """\
-<?xml version="1.0" encoding="utf-8"?>
-<ModMetaData>
-  <packageId>Ludeon.RimWorld</packageId>
-  <author>Ludeon Studios</author>
-  <forceLoadBefore>
-    <li>Ludeon.RimWorld.Ideology</li>
-    <li>Ludeon.RimWorld.Royalty</li>
-  </forceLoadBefore>
-</ModMetaData>
-    """
-    pass
-    _ = about_path.write_text(about_xml)
-
-
-@pytest.fixture
-def rimworld_royalty_mod(rimworld_root_data: Path):
-    about_path = rimworld_root_data / "Royalty" / "About" / "About.xml"
-    about_path.parent.mkdir(parents=True, exist_ok=True)
-    about_xml = """\
-<?xml version="1.0" encoding="utf-8"?>
-<ModMetaData>
-  <packageId>Ludeon.RimWorld.Royalty</packageId>
-  <author>Ludeon Studios</author>
-  <steamAppId>1149640</steamAppId>
-  <supportedVersions>
-  	<li>1.6</li>
-  </supportedVersions>
-  <forceLoadAfter>
-    <li>Ludeon.RimWorld</li>
-  </forceLoadAfter>
-  <forceLoadBefore>
-    <li>Ludeon.RimWorld.Ideology</li>
-    <li>Ludeon.RimWorld.Biotech</li>
-    <li>Ludeon.RimWorld.Anomaly</li>
-    <li>Ludeon.RimWorld.Odyssey</li>
-  </forceLoadBefore>
-</ModMetaData>
-    """
-    pass
-    _ = about_path.write_text(about_xml)
-
-
-@pytest.fixture
-def rimworld_ideology_mod(rimworld_root_data: Path):
-    about_path = rimworld_root_data / "Ideology" / "About" / "About.xml"
-    about_path.parent.mkdir(parents=True, exist_ok=True)
-    about_xml = """\
-<?xml version="1.0" encoding="utf-8"?>
-<ModMetaData>\
-  <packageId>Ludeon.RimWorld.Ideology</packageId>
-  <author>Ludeon Studios</author>
-  <steamAppId>1392840</steamAppId>
-  <supportedVersions>
-  	<li>1.6</li>
-  </supportedVersions>
-  <forceLoadAfter>
-    <li>Ludeon.RimWorld</li>
-    <li>Ludeon.RimWorld.Royalty</li>
-  </forceLoadAfter>
-  <forceLoadBefore>
-    <li>Ludeon.RimWorld.Biotech</li>
-    <li>Ludeon.RimWorld.Anomaly</li>
-    <li>Ludeon.RimWorld.Odyssey</li>
-  </forceLoadBefore>
-</ModMetaData>
-    """
-    pass
-    _ = about_path.write_text(about_xml)
