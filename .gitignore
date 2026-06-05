@@ -1,6 +1,9 @@
 .pytest_tmp
 /main.py
 
+# RimPack CLI scratch directories
+.tmp-rimpack-*/
+
 # Python-generated files
 __pycache__/
 *.py[oc]

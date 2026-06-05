@@ -57,6 +57,8 @@ uv run rimpack create-config
 uv run rimpack init
 ```
 
+In the Codex sandbox, `uv run rimpack ...` may fail with an access-denied error while opening uv's user cache, for example `C:\Users\lai\AppData\Local\uv\cache\sdists-v9\.git`. If that happens, rerun the same command with normal shell permissions; this is a sandbox/cache access issue, not a RimPack CLI failure.
+
 ## Coding Conventions
 
 - Target Python 3.12 or newer.
