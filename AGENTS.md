@@ -86,6 +86,7 @@ In the Codex sandbox, `uv run rimpack ...` may fail with an access-denied error 
 - For mod metadata, prefer compact inline XML in tests unless fixture data is specifically needed.
 - For Steam Workshop resolution, fake the Steamworks object rather than requiring Steam or network access.
 - For order-sensitive behavior, assert exact output order.
+- For CLI tests that edit modpack content, set up a real modpack shape with `pack.yml` and module files under `modules/`; do not use loose module/list YAML files in the cwd unless the behavior explicitly targets loose files.
 
 ## Specs
 

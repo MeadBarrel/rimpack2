@@ -25,6 +25,7 @@ Behavior:
 - Write YAML with:
   - `rimworld_root`
   - `workshop_root`
+  - `extra_mod_folders` when the user has configured additional local mod roots
 
 The active tests monkeypatch path discovery and verify that existing configs are not overwritten.
 
@@ -65,10 +66,17 @@ Future CLI commands that edit modpack files should:
 
 - `rimworld_root: Path | None`
 - `workshop_root: Path | None`
+- `extra_mod_folders: list[Path]`
 - `Config.from_file(path)`
 - `Config.parse(source)`
 
 It uses `ruamel.yaml` and `typedload`.
+
+`extra_mod_folders` is machine-local config. It contains zero or more additional
+directories to scan for locally installed mods, in addition to `<rimworld_root>/Mods`
+and the Steam Workshop root. CLI commands that resolve a package ID to installed
+mod metadata should include these folders in their lookup paths and use
+`About/About.xml` metadata from any matching mod folder.
 
 ## Known Gaps
 

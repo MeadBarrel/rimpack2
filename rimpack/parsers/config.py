@@ -9,6 +9,7 @@ import typedload
 class Config:
     rimworld_root: Path | None = None
     workshop_root: Path | None = None
+    extra_mod_folders: list[Path] = field(default_factory=list)
 
     @classmethod
     def from_file(cls, path: Path) -> Self:

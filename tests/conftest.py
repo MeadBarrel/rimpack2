@@ -1,13 +1,11 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from shutil import copytree
 
 import pytest
 from pytest import MonkeyPatch
 
 from rimpack.main import console
-from rimpack.config import Config
 
 
 @pytest.fixture()
@@ -67,18 +65,52 @@ def workshop_root(steam_root: Path, monkeypatch: MonkeyPatch) -> Path:
 
 
 @pytest.fixture
+def extra_mod_path(fs_root: Path) -> Path:
+    result = fs_root / "extra-mods"
+    result.mkdir(exist_ok=True)
+    return result
+
+
+@pytest.fixture
 def populated_config(
     config_root: Path,
     rimworld_root: Path,
     workshop_root: Path,
+    extra_mod_path: Path,
     monkeypatch: MonkeyPatch,
 ) -> Path:
     src = f"""
 rimworld_root: {rimworld_root.as_posix()}
 workshop_root: {workshop_root.as_posix()}
+extra_mod_folders:
+  - {extra_mod_path.as_posix()}
     """
     path = config_root / "config.yml"
     path.write_text(src)
+    return path
+
+
+@pytest.fixture
+def core_mod_list_path(tmp_path: Path) -> Path:
+    modules_path = tmp_path / "modules"
+    modules_path.mkdir()
+    (tmp_path / "pack.yml").write_text(
+        "pack:\n"
+        "  modules:\n"
+        "    - modules/00_ludeon.yml\n"
+        "    - modules/10_core.yml\n",
+        encoding="utf-8",
+    )
+    (modules_path / "00_ludeon.yml").write_text(
+        "- pid: ludeon.rimworld\n",
+        encoding="utf-8",
+    )
+    path = modules_path / "10_core.yml"
+    path.write_text(
+        "# This is a comment\n"
+        "  - pid: some.mod\n",
+        encoding="utf-8",
+    )
     return path
 
 
