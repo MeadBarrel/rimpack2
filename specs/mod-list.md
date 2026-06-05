@@ -8,15 +8,14 @@ Mod lists are git-tracked modpack files and must follow `specs/modpack-format.md
 
 ## Data Shape
 
-Top-level YAML keys are pack names. Each pack contains a sequence of mod records.
+Mod-list files contain a top-level sequence of mod records.
 
 Supported mod reference forms:
 
 ```yaml
-core:
-  - pid: ludeon.rimworld
-  - wid: 123456789
-  - loc: LocalFolderName
+- pid: ludeon.rimworld
+- wid: 123456789
+- loc: LocalFolderName
 ```
 
 Optional record fields:
@@ -28,6 +27,23 @@ Optional record fields:
 `before` and `after` contain reference objects with the same supported reference forms.
 
 Records should remain compact but explicit. Prefer adding optional fields only when they help users understand or control the modpack.
+
+## Subsections
+
+A mod-list file may group records into named subsections by placing a mapping in
+the top-level sequence:
+
+```yaml
+- factions:
+  - pid: my.faction.mod
+```
+
+CLI commands that add to a named subsection should search all module files
+referenced by the current `pack.yml`. If exactly one subsection with the target
+name exists, the command should append to that subsection in its source file.
+
+If the same subsection name is defined in multiple module files, the command
+should report a conflict error and leave all mod-list files unchanged.
 
 ## Reference Identity
 

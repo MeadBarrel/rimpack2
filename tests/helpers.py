@@ -6,6 +6,7 @@ from ruamel.yaml import YAML
 
 _DATA_PATH = Path(__file__).parent / "data"
 _MODS_PATH = _DATA_PATH / "mods"
+_WORKSHOP_MODS_PATH = _DATA_PATH / "workshop_mods"
 
 
 def get_mod_folder(mod_name: str) -> Path:
@@ -18,6 +19,22 @@ def get_mod_folder(mod_name: str) -> Path:
 def copy_mods(path: Path, *names: str):
     for name in names:
         copytree(get_mod_folder(name), path / name, dirs_exist_ok=True)
+
+
+def get_workshop_mod_folder(published_file_id: int) -> Path:
+    result = _WORKSHOP_MODS_PATH / str(published_file_id)
+    assert result.exists()
+    assert result.is_dir()
+    return result
+
+
+def copy_workshop_mods(path: Path, *published_file_ids: int) -> None:
+    for published_file_id in published_file_ids:
+        copytree(
+            get_workshop_mod_folder(published_file_id),
+            path / str(published_file_id),
+            dirs_exist_ok=True,
+        )
 
 
 def normalize_yaml_text(text: str) -> str:

@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
 
 import pytest
 from pytest import MonkeyPatch
@@ -95,10 +96,11 @@ def core_mod_list_path(tmp_path: Path) -> Path:
     modules_path = tmp_path / "modules"
     modules_path.mkdir()
     (tmp_path / "pack.yml").write_text(
-        "pack:\n"
-        "  modules:\n"
-        "    - modules/00_ludeon.yml\n"
-        "    - modules/10_core.yml\n",
+        """pack:
+  modules:
+    - modules/00_ludeon.yml
+    - modules/10_core.yml
+""",
         encoding="utf-8",
     )
     (modules_path / "00_ludeon.yml").write_text(
@@ -107,11 +109,75 @@ def core_mod_list_path(tmp_path: Path) -> Path:
     )
     path = modules_path / "10_core.yml"
     path.write_text(
-        "# This is a comment\n"
-        "  - pid: some.mod\n",
+        """# This is a comment
+  - pid: some.mod
+""",
         encoding="utf-8",
     )
     return path
+
+
+@pytest.fixture
+def factions_mod_list_path(tmp_path: Path) -> Path:
+    modules_path = tmp_path / "modules"
+    modules_path.mkdir()
+    (tmp_path / "pack.yml").write_text(
+        """pack:
+  modules:
+    - modules/10_core.yml
+    - modules/20_factions.yml
+""",
+        encoding="utf-8",
+    )
+    (modules_path / "10_core.yml").write_text(
+        "- pid: some.mod\n",
+        encoding="utf-8",
+    )
+    path = modules_path / "20_factions.yml"
+    path.write_text(
+        """# This is a comment
+- factions:
+  - pid: some.faction.mod
+""",
+        encoding="utf-8",
+    )
+    return path
+
+
+class ConflictingFactionsModListPaths(NamedTuple):
+    first: Path
+    second: Path
+
+
+@pytest.fixture
+def conflicting_factions_mod_list_paths(
+    tmp_path: Path,
+) -> ConflictingFactionsModListPaths:
+    modules_path = tmp_path / "modules"
+    modules_path.mkdir()
+    (tmp_path / "pack.yml").write_text(
+        """pack:
+  modules:
+    - modules/10_core.yml
+    - modules/20_factions.yml
+""",
+        encoding="utf-8",
+    )
+    first = modules_path / "10_core.yml"
+    first.write_text(
+        """- factions:
+  - pid: core.faction.mod
+""",
+        encoding="utf-8",
+    )
+    second = modules_path / "20_factions.yml"
+    second.write_text(
+        """- factions:
+  - pid: extra.faction.mod
+""",
+        encoding="utf-8",
+    )
+    return ConflictingFactionsModListPaths(first, second)
 
 
 @dataclass
